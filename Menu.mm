@@ -3,29 +3,36 @@
 
 static uintptr_t getSlide(void) {
     for (uint32_t i = 0; i < _dyld_image_count(); i++) {
-        if (strstr(_dyld_get_image_name(i), "HelloNeighbor")) {
+        if (strstr(_dyld_get_image_name(i), "HelloNeighbor"))
             return _dyld_get_image_vmaddr_slide(i);
-        }
     }
     return 0;
 }
 
-typedef void (*ExecFunc)(void *ctx, void *args, void *result);
+// Глобальные указатели на IConsoleCommand* объекты (из бинаря версии 2.3.12)
+#define GLOBAL_FLY          0x671a760
+#define GLOBAL_FREEZEFRAME  0x671a768
+#define GLOBAL_GHOST        0x671a770
+#define GLOBAL_GOD          0x671a778
+#define GLOBAL_PLAYERSONLY  0x671a798
+#define GLOBAL_SLOMO        0x671a7c8
+#define GLOBAL_SUMMON       0x671a7e8
+#define GLOBAL_TELEPORT     0x671a7f0
 
-// Оффсеты из бинаря версии 2.3.12
-#define OFFSET_GOD          0x4761154
-#define OFFSET_GHOST        0x4761108
-#define OFFSET_FLY          0x4761070
-#define OFFSET_TELEPORT     0x47615c8
-#define OFFSET_FREEZEFRAME  0x47610bc
-#define OFFSET_SLOMO        0x476144c
-#define OFFSET_SUMMON       0x476157c
-#define OFFSET_PLAYERSONLY  0x4761284
+typedef void (*ExecFn)(uintptr_t self, const wchar_t *args, uintptr_t world, uintptr_t output);
 
-static void callCommand(uintptr_t offset) {
+static void callCommand(uintptr_t global_offset) {
     uintptr_t slide = getSlide();
     if (!slide) return;
-    ((ExecFunc)(offset + slide))(NULL, NULL, NULL);
+
+    // Читаем IConsoleCommand* из глобала
+    uintptr_t *global_ptr = (uintptr_t *)(global_offset + slide);
+    uintptr_t cmd_obj = *global_ptr;
+    if (!cmd_obj) return;  // команда ещё не инициализирована движком
+
+    // Вызываем Execute через vtable (slot 3 в IConsoleCommand)
+    uintptr_t *vtable = *(uintptr_t **)cmd_obj;
+    ((ExecFn)vtable[3])(cmd_obj, L"", 0, 0);
 }
 
 @implementation DragButton
@@ -42,7 +49,7 @@ static void callCommand(uintptr_t offset) {
 
 @implementation CheatMenu {
     BOOL _visible;
-    NSArray *_offsets;
+    NSArray *_globals;
 }
 
 + (instancetype)sharedInstance {
@@ -60,21 +67,21 @@ static void callCommand(uintptr_t offset) {
 
 - (void)buildPanel {
     NSArray *commands = @[
-        @[@"God Mode",     @(OFFSET_GOD)],
-        @[@"Ghost",        @(OFFSET_GHOST)],
-        @[@"Fly",          @(OFFSET_FLY)],
-        @[@"Teleport",     @(OFFSET_TELEPORT)],
-        @[@"Freeze Frame", @(OFFSET_FREEZEFRAME)],
-        @[@"Slomo",        @(OFFSET_SLOMO)],
-        @[@"Summon",       @(OFFSET_SUMMON)],
-        @[@"Players Only", @(OFFSET_PLAYERSONLY)],
+        @[@"God Mode",     @(GLOBAL_GOD)],
+        @[@"Ghost",        @(GLOBAL_GHOST)],
+        @[@"Fly",          @(GLOBAL_FLY)],
+        @[@"Teleport",     @(GLOBAL_TELEPORT)],
+        @[@"Freeze Frame", @(GLOBAL_FREEZEFRAME)],
+        @[@"Slomo",        @(GLOBAL_SLOMO)],
+        @[@"Summon",       @(GLOBAL_SUMMON)],
+        @[@"Players Only", @(GLOBAL_PLAYERSONLY)],
     ];
 
-    NSMutableArray *offsets = [NSMutableArray array];
+    NSMutableArray *globals = [NSMutableArray array];
     for (NSArray *cmd in commands) {
-        [offsets addObject:cmd[1]];
+        [globals addObject:cmd[1]];
     }
-    _offsets = [offsets copy];
+    _globals = [globals copy];
 
     CGFloat h = 50 + commands.count * 38 + 8;
     _panel = [[UIView alloc] initWithFrame:CGRectMake(80, 60, 220, h)];
@@ -115,7 +122,7 @@ static void callCommand(uintptr_t offset) {
 }
 
 - (void)commandTapped:(UIButton *)sender {
-    callCommand([_offsets[sender.tag] unsignedIntegerValue]);
+    callCommand([_globals[sender.tag] unsignedIntegerValue]);
 }
 
 - (void)show { _panel.hidden = NO; _visible = YES; }
