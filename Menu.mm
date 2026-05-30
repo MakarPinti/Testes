@@ -38,13 +38,26 @@ static void callCommand(uintptr_t va_offset) {
 }
 
 - (instancetype)init {
-    self = [super initWithFrame:[UIScreen mainScreen].bounds];
+    self = [super initWithFrame:CGRectMake(0, 0, 1, 1)];
     self.windowLevel = UIWindowLevelAlert + 100;
     self.backgroundColor = [UIColor clearColor];
     self.hidden = YES;
-    [self buildUI];
     [self makeKeyAndVisible];
+    [self buildUI];
     return self;
+}
+
+// Пропускаем тапы когда меню скрыто
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    if (self.hidden || !_visible) return nil;
+    UIView *hit = [super hitTest:point withEvent:event];
+    if (hit == self) return nil;
+    return hit;
+}
+
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
+    if (!_visible) return NO;
+    return [_panel pointInside:[self convertPoint:point toView:_panel] withEvent:event];
 }
 
 - (void)buildUI {
@@ -53,6 +66,7 @@ static void callCommand(uintptr_t va_offset) {
     _panel.layer.cornerRadius = 14;
     _panel.layer.borderWidth = 1.5;
     _panel.layer.borderColor = [UIColor colorWithRed:0.2 green:0.8 blue:1.0 alpha:1.0].CGColor;
+    _panel.hidden = YES;
     [self addSubview:_panel];
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(0, 10, 220, 30)];
@@ -85,18 +99,16 @@ static void callCommand(uintptr_t va_offset) {
     ];
 
     for (NSInteger i = 0; i < (NSInteger)commands.count; i++) {
-        NSString *name = commands[i][0];
-        NSNumber *offset = commands[i][1];
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
         btn.frame = CGRectMake(15, 8 + i * 38, 190, 32);
         btn.backgroundColor = [[UIColor colorWithRed:0.2 green:0.8 blue:1.0 alpha:1.0] colorWithAlphaComponent:0.15];
         btn.layer.cornerRadius = 8;
         btn.layer.borderWidth = 1;
         btn.layer.borderColor = [UIColor colorWithRed:0.2 green:0.8 blue:1.0 alpha:0.4].CGColor;
-        [btn setTitle:name forState:UIControlStateNormal];
+        [btn setTitle:commands[i][0] forState:UIControlStateNormal];
         [btn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
         btn.titleLabel.font = [UIFont systemFontOfSize:14];
-        btn.tag = [offset integerValue];
+        btn.tag = [commands[i][1] integerValue];
         [btn addTarget:self action:@selector(commandTapped:) forControlEvents:UIControlEventTouchUpInside];
         [scroll addSubview:btn];
     }
@@ -105,15 +117,18 @@ static void callCommand(uintptr_t va_offset) {
 
 - (void)commandTapped:(UIButton *)sender {
     callCommand((uintptr_t)sender.tag);
-    [UIView animateWithDuration:0.1 animations:^{
-        sender.alpha = 0.4;
-    } completion:^(BOOL f) {
-        [UIView animateWithDuration:0.1 animations:^{ sender.alpha = 1.0; }];
-    }];
 }
 
-- (void)show  { self.hidden = NO; _visible = YES; }
-- (void)hide  { self.hidden = YES; _visible = NO; }
+- (void)show {
+    self.hidden = NO;
+    _panel.hidden = NO;
+    _visible = YES;
+}
+- (void)hide {
+    _panel.hidden = YES;
+    self.hidden = YES;
+    _visible = NO;
+}
 - (BOOL)isVisible { return _visible; }
 - (void)toggleVisibility { _visible ? [self hide] : [self show]; }
 
