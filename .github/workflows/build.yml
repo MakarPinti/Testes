@@ -12,6 +12,7 @@ jobs:
       run: |
         export THEOS=~/theos
         echo "THEOS=$THEOS" >> $GITHUB_ENV
+        echo "THEOS_MAKE_PATH=$HOME/theos/makefiles" >> $GITHUB_ENV
         git clone --recursive https://github.com/theos/theos.git $THEOS
         brew install ldid xz
     - name: Install SDK
@@ -19,18 +20,10 @@ jobs:
         mkdir -p ~/theos/sdks
         curl -L "https://github.com/theos/sdks/archive/refs/heads/master.tar.gz" -o sdks.tar.gz
         tar -xzf sdks.tar.gz --strip-components=1 -C ~/theos/sdks/ "sdks-master/iPhoneOS16.5.sdk"
-    - name: Install theos-jailed
-      run: |
-        git clone https://github.com/kabiroberai/theos-jailed.git /tmp/tj
-        mkdir -p ~/theos/extras/theos-jailed
-        cp -r /tmp/tj/. ~/theos/extras/theos-jailed/
     - name: Build
-      run: |
-        export THEOS=~/theos
-        export THEOS_MAKE_PATH=$THEOS/makefiles
-        make
+      run: make
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
         name: HelloNeighborTweak-dylib
-        path: .theos/obj/*.dylib
+        path: .theos/obj/**/*.dylib
