@@ -17,7 +17,7 @@
 static PassthroughWindow *overlayWindow = nil;
 
 %ctor {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)),
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)),
         dispatch_get_main_queue(), ^{
             overlayWindow = [[PassthroughWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
             overlayWindow.windowLevel = UIWindowLevelAlert + 99;
