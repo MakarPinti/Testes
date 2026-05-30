@@ -25,9 +25,7 @@ typedef void (*ExecFunc)(void *ctx, void *args, void *result);
 static void callCommand(uintptr_t offset) {
     uintptr_t slide = getSlide();
     if (!slide) return;
-    uintptr_t addr = offset + slide;
-    // UE4 exec: передаём нулевой контекст, часть команд работает без него
-    ((ExecFunc)addr)(NULL, NULL, NULL);
+    ((ExecFunc)(offset + slide))(NULL, NULL, NULL);
 }
 
 @implementation DragButton
@@ -73,7 +71,11 @@ static void callCommand(uintptr_t offset) {
         @[@"Players Only", @(OFFSET_PLAYERSONLY)],
     ];
 
-    _offsets = [commands valueForKeyPath:@"@unionOfObjects.1"];
+    NSMutableArray *offsets = [NSMutableArray array];
+    for (NSArray *cmd in commands) {
+        [offsets addObject:cmd[1]];
+    }
+    _offsets = [offsets copy];
 
     CGFloat h = 50 + commands.count * 38 + 8;
     _panel = [[UIView alloc] initWithFrame:CGRectMake(80, 60, 220, h)];
