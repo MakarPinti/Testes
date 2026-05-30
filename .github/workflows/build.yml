@@ -1,1 +1,35 @@
-
+name: Build
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Theos
+      run: |
+        export THEOS=~/theos
+        echo "THEOS=$THEOS" >> $GITHUB_ENV
+        git clone --recursive https://github.com/theos/theos.git $THEOS
+        brew install ldid xz
+    - name: Install SDK
+      run: |
+        mkdir -p ~/theos/sdks
+        curl -LO https://github.com/theos/sdks/releases/download/iPhoneOS16.5/iPhoneOS16.5.sdk.tar.xz
+        tar -xf iPhoneOS16.5.sdk.tar.xz -C ~/theos/sdks/
+    - name: Install theos-jailed
+      run: |
+        git clone https://github.com/kabiroberai/theos-jailed.git /tmp/tj
+        cp -r /tmp/tj/theos-jailed ~/theos/extras/
+    - name: Build
+      run: |
+        export THEOS=~/theos
+        export THEOS_MAKE_PATH=$THEOS/makefiles
+        make
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: HelloNeighborTweak-dylib
+        path: .theos/obj/*.dylib
