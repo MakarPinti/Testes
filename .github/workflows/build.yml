@@ -22,7 +22,8 @@ jobs:
     - name: Install theos-jailed
       run: |
         git clone https://github.com/kabiroberai/theos-jailed.git /tmp/tj
-        cp -r /tmp/tj/theos-jailed ~/theos/extras/
+        mkdir -p ~/theos/extras/theos-jailed
+        cp -r /tmp/tj/. ~/theos/extras/theos-jailed/
     - name: Build
       run: |
         export THEOS=~/theos
