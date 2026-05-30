@@ -1,27 +1,33 @@
 #import "Menu.h"
 #import <mach-o/dyld.h>
 
-#define OFFSET_GOD         0x104760558
-#define OFFSET_GHOST       0x104760574
-#define OFFSET_WALK        0x104760590
-#define OFFSET_FLY         0x1047605ac
-#define OFFSET_TELEPORT    0x104760650
-#define OFFSET_FREEZEFRAME 0x10476066c
-#define OFFSET_SLOMO       0x1047604d0
-#define OFFSET_SUMMON      0x10476026c
-#define OFFSET_PLAYERSONLY 0x104760250
-
-typedef void (*ConsoleCmd)(void);
-
-static void callCommand(uintptr_t va_offset) {
-    uintptr_t slide = 0;
+static uintptr_t getSlide(void) {
     for (uint32_t i = 0; i < _dyld_image_count(); i++) {
         if (strstr(_dyld_get_image_name(i), "HelloNeighbor")) {
-            slide = _dyld_get_image_vmaddr_slide(i);
-            break;
+            return _dyld_get_image_vmaddr_slide(i);
         }
     }
-    ((ConsoleCmd)(va_offset + slide))();
+    return 0;
+}
+
+typedef void (*ExecFunc)(void *ctx, void *args, void *result);
+
+#define OFFSET_GOD          0x4760558
+#define OFFSET_GHOST        0x4760574
+#define OFFSET_WALK         0x4760590
+#define OFFSET_FLY          0x47605ac
+#define OFFSET_TELEPORT     0x4760650
+#define OFFSET_FREEZEFRAME  0x476066c
+#define OFFSET_SLOMO        0x47604d0
+#define OFFSET_SUMMON       0x476026c
+#define OFFSET_PLAYERSONLY  0x4760250
+
+static void callCommand(uintptr_t offset) {
+    uintptr_t slide = getSlide();
+    if (!slide) return;
+    uintptr_t addr = offset + slide;
+    // UE4 exec: передаём нулевой контекст, часть команд работает без него
+    ((ExecFunc)addr)(NULL, NULL, NULL);
 }
 
 @implementation DragButton
@@ -38,6 +44,7 @@ static void callCommand(uintptr_t va_offset) {
 
 @implementation CheatMenu {
     BOOL _visible;
+    NSArray *_offsets;
 }
 
 + (instancetype)sharedInstance {
@@ -66,7 +73,10 @@ static void callCommand(uintptr_t va_offset) {
         @[@"Players Only", @(OFFSET_PLAYERSONLY)],
     ];
 
-    _panel = [[UIView alloc] initWithFrame:CGRectMake(80, 60, 220, 50 + commands.count * 38 + 8)];
+    _offsets = [commands valueForKeyPath:@"@unionOfObjects.1"];
+
+    CGFloat h = 50 + commands.count * 38 + 8;
+    _panel = [[UIView alloc] initWithFrame:CGRectMake(80, 60, 220, h)];
     _panel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.85];
     _panel.layer.cornerRadius = 14;
     _panel.layer.borderWidth = 1.5;
@@ -97,18 +107,18 @@ static void callCommand(uintptr_t va_offset) {
         [btn setTitle:commands[i][0] forState:UIControlStateNormal];
         [btn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
         btn.titleLabel.font = [UIFont systemFontOfSize:14];
-        btn.tag = [commands[i][1] integerValue];
+        btn.tag = i;
         [btn addTarget:self action:@selector(commandTapped:) forControlEvents:UIControlEventTouchUpInside];
         [_panel addSubview:btn];
     }
 }
 
 - (void)commandTapped:(UIButton *)sender {
-    callCommand((uintptr_t)sender.tag);
+    callCommand([_offsets[sender.tag] unsignedIntegerValue]);
 }
 
-- (void)show  { _panel.hidden = NO; _visible = YES; }
-- (void)hide  { _panel.hidden = YES; _visible = NO; }
+- (void)show { _panel.hidden = NO; _visible = YES; }
+- (void)hide { _panel.hidden = YES; _visible = NO; }
 - (void)toggleVisibility { _visible ? [self hide] : [self show]; }
 
 @end
