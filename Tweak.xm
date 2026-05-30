@@ -2,18 +2,23 @@
 #import "Menu.h"
 
 @interface PassthroughWindow : UIWindow
-@property (nonatomic, strong) UIButton *floatBtn;
 @end
-
 @implementation PassthroughWindow
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     UIView *hit = [super hitTest:point withEvent:event];
     if (hit == self) return nil;
     return hit;
 }
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
+    for (UIView *v in self.subviews) {
+        if (!v.hidden && [v pointInside:[self convertPoint:point toView:v] withEvent:event])
+            return YES;
+    }
+    return NO;
+}
 @end
 
-static PassthroughWindow *gestureWindow = nil;
+static PassthroughWindow *overlayWindow = nil;
 
 @interface DragButton : UIButton
 @end
@@ -22,10 +27,10 @@ static PassthroughWindow *gestureWindow = nil;
     UITouch *t = [touches anyObject];
     CGPoint prev = [t previousLocationInView:self.superview];
     CGPoint curr = [t locationInView:self.superview];
-    CGPoint center = self.center;
-    center.x += curr.x - prev.x;
-    center.y += curr.y - prev.y;
-    self.center = center;
+    CGPoint c = self.center;
+    c.x += curr.x - prev.x;
+    c.y += curr.y - prev.y;
+    self.center = c;
 }
 @end
 
@@ -33,15 +38,13 @@ static PassthroughWindow *gestureWindow = nil;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)),
         dispatch_get_main_queue(), ^{
 
-        gestureWindow = [[PassthroughWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-        gestureWindow.windowLevel = UIWindowLevelAlert + 99;
-        gestureWindow.backgroundColor = [UIColor clearColor];
-        gestureWindow.hidden = NO;
-
-        UIViewController *vc = [[UIViewController alloc] init];
-        vc.view.backgroundColor = [UIColor clearColor];
-        gestureWindow.rootViewController = vc;
-        [gestureWindow makeKeyAndVisible];
+        overlayWindow = [[PassthroughWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+        overlayWindow.windowLevel = UIWindowLevelAlert + 99;
+        overlayWindow.backgroundColor = [UIColor clearColor];
+        overlayWindow.rootViewController = [[UIViewController alloc] init];
+        overlayWindow.rootViewController.view.backgroundColor = [UIColor clearColor];
+        // НЕ вызываем makeKeyAndVisible — игра остаётся key window
+        overlayWindow.hidden = NO;
 
         DragButton *btn = [DragButton buttonWithType:UIButtonTypeCustom];
         btn.frame = CGRectMake(20, 120, 50, 50);
@@ -52,6 +55,6 @@ static PassthroughWindow *gestureWindow = nil;
         btn.titleLabel.font = [UIFont systemFontOfSize:22];
         [btn addTarget:[CheatMenu sharedMenu] action:@selector(toggleVisibility)
               forControlEvents:UIControlEventTouchUpInside];
-        [vc.view addSubview:btn];
+        [overlayWindow.rootViewController.view addSubview:btn];
     });
 }
