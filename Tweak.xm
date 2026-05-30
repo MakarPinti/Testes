@@ -8,16 +8,8 @@
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     UIView *hit = [super hitTest:point withEvent:event];
-    if (hit == self) return nil;
+    if (hit == self || hit == self.rootViewController.view) return nil;
     return hit;
-}
-
-- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
-    for (UIView *v in self.subviews) {
-        if (!v.hidden && [v pointInside:[self convertPoint:point toView:v] withEvent:event])
-            return YES;
-    }
-    return NO;
 }
 
 @end
