@@ -12,15 +12,15 @@ static uintptr_t getSlide(void) {
 
 typedef void (*ExecFunc)(void *ctx, void *args, void *result);
 
-#define OFFSET_GOD          0x4760558
-#define OFFSET_GHOST        0x4760574
-#define OFFSET_WALK         0x4760590
-#define OFFSET_FLY          0x47605ac
-#define OFFSET_TELEPORT     0x4760650
-#define OFFSET_FREEZEFRAME  0x476066c
-#define OFFSET_SLOMO        0x47604d0
-#define OFFSET_SUMMON       0x476026c
-#define OFFSET_PLAYERSONLY  0x4760250
+// Оффсеты из бинаря версии 2.3.12
+#define OFFSET_GOD          0x4761154
+#define OFFSET_GHOST        0x4761108
+#define OFFSET_FLY          0x4761070
+#define OFFSET_TELEPORT     0x47615c8
+#define OFFSET_FREEZEFRAME  0x47610bc
+#define OFFSET_SLOMO        0x476144c
+#define OFFSET_SUMMON       0x476157c
+#define OFFSET_PLAYERSONLY  0x4761284
 
 static void callCommand(uintptr_t offset) {
     uintptr_t slide = getSlide();
@@ -62,7 +62,6 @@ static void callCommand(uintptr_t offset) {
     NSArray *commands = @[
         @[@"God Mode",     @(OFFSET_GOD)],
         @[@"Ghost",        @(OFFSET_GHOST)],
-        @[@"Walk",         @(OFFSET_WALK)],
         @[@"Fly",          @(OFFSET_FLY)],
         @[@"Teleport",     @(OFFSET_TELEPORT)],
         @[@"Freeze Frame", @(OFFSET_FREEZEFRAME)],
